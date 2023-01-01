@@ -39,7 +39,23 @@ class SettingsScreen extends HookConsumerWidget {
                 ),
               ],
             ),
-          )
+          ),
+          // OOSライセンス
+          ListTile(
+            title: const Text('OOSライセンス'),
+            onTap: () {
+              showLicensePage(
+                context: context,
+                applicationName: 'Flutter Feed Viewer',
+                applicationVersion: '1.0.0',
+                applicationIcon: const SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: FlutterLogo(),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
