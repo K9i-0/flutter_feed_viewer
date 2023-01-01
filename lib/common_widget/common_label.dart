@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_feed_viewer/util/build_context_extension.dart';
 
 class CommonLabel extends StatelessWidget {
   final String label;
@@ -13,7 +14,7 @@ class CommonLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget commonLabel = DecoratedBox(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary,
+        color: context.colorScheme.primary,
         borderRadius: const BorderRadius.all(Radius.circular(4)),
       ),
       child: Padding(
@@ -23,9 +24,9 @@ class CommonLabel extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: Theme.of(context).textTheme.labelSmall?.apply(
-                color: Theme.of(context).colorScheme.onPrimary,
-              ),
+          style: context.textTheme.labelSmall?.apply(
+            color: context.colorScheme.onPrimary,
+          ),
         ),
       ),
     );

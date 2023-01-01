@@ -4,6 +4,7 @@ import 'package:flutter_feed_viewer/common_widget/common_label.dart';
 import 'package:flutter_feed_viewer/common_widget/error_text_with_retry_button.dart';
 import 'package:flutter_feed_viewer/feature/feed/feed_category.dart';
 import 'package:flutter_feed_viewer/feature/feed/feed_repository.dart';
+import 'package:flutter_feed_viewer/util/build_context_extension.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -128,7 +129,7 @@ class ArticleItem extends HookConsumerWidget {
                           Expanded(
                             child: Text(
                               article.elapsedTime,
-                              style: Theme.of(context).textTheme.labelSmall,
+                              style: context.textTheme.labelSmall,
                             ),
                           ),
                           // シェアボタンとの間隔
