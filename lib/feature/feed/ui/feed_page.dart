@@ -8,6 +8,7 @@ import 'package:flutter_feed_viewer/util/build_context_extension.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 final feedProviderFamily =
@@ -148,11 +149,18 @@ class ArticleItem extends HookConsumerWidget {
               bottom: -12,
               right: -12,
               child: IconButton(
-                icon: Icon(Icons.adaptive.share, size: 16),
-                tooltip: 'シェア',
-                // TODO(K9i-0): 実装
-                onPressed: () => throw UnimplementedError(),
-              ),
+                  icon: Icon(Icons.adaptive.share, size: 16),
+                  tooltip: 'シェア',
+                  onPressed: () {
+                    if (article.url != null) {
+                      final box = context.findRenderObject() as RenderBox?;
+                      Share.share(
+                        "${article.url!}\n#Flutter最新記事",
+                        sharePositionOrigin:
+                            box!.localToGlobal(Offset.zero) & box.size,
+                      );
+                    }
+                  }),
             ),
           ],
         ),
