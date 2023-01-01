@@ -29,6 +29,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  cached_network_image: ^3.2.3
   collection: ^1.16.0
   device_preview: ^1.1.0
   device_preview_screenshot: ^1.0.0
@@ -42,6 +43,7 @@ dependencies:
   metadata_fetch: ^0.4.1
   path_provider: ^2.0.11
   text_style_preview: ^0.1.2
+  url_launcher: ^6.1.7
   webfeed: ^0.7.0
 
 dev_dependencies:
