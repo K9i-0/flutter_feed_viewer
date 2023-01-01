@@ -12,6 +12,14 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       title: const Text('Flutter最新記事'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.settings),
+          onPressed: () {
+            Navigator.of(context).pushNamed('/settings');
+          },
+        ),
+      ],
       bottom: TabBar(
         controller: tabController,
         tabs: FeedCategory.values
