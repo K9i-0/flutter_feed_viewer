@@ -10,6 +10,14 @@
             "type": "dart"
         },
         {
+            "name": "flutter_feed_viewer (with device_preview)",
+            "request": "launch",
+            "type": "dart",
+            "args": [
+                "--dart-define=enable_device_preview=true",
+            ],
+        },
+        {
             "name": "flutter_feed_viewer (profile mode)",
             "request": "launch",
             "type": "dart",
