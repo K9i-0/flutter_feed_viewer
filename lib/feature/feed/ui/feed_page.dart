@@ -5,6 +5,7 @@ import 'package:flutter_feed_viewer/common_widget/error_text_with_retry_button.d
 import 'package:flutter_feed_viewer/feature/feed/feed_category.dart';
 import 'package:flutter_feed_viewer/feature/feed/feed_repository.dart';
 import 'package:flutter_feed_viewer/util/build_context_extension.dart';
+import 'package:flutter_feed_viewer/util/date_time_extension.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -121,15 +122,16 @@ class ArticleItem extends HookConsumerWidget {
                       Row(
                         children: [
                           // 新着表示
-                          const CommonLabel(
-                            label: '新着',
-                            tooltip: '前回アプリを開いてからの新着記事',
-                          ),
+                          if (article.isNew)
+                            const CommonLabel(
+                              label: '新着',
+                              tooltip: '前回アプリを開いてからの新着記事',
+                            ),
                           const Gap(4),
                           // n日前
                           Expanded(
                             child: Text(
-                              article.elapsedTime,
+                              article.publishedAt?.elapsedTime ?? '',
                               style: context.textTheme.labelSmall,
                             ),
                           ),

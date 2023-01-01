@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_feed_viewer/local/shared_preferences.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:metadata_fetch/metadata_fetch.dart';
 import 'package:webfeed/webfeed.dart';
@@ -16,34 +17,58 @@ class FeedRepository {
   const FeedRepository(this._ref);
 
   Future<Feed> fetchZennFeed() async {
+    // 前回取得時の最終更新日時を取得
+    const lastUpdatedAtKey = SharedPreferencesKeys.lastZennFeedUpdatedAt;
+    final lastUpdatedAt = _getLastUpdatedAt(lastUpdatedAtKey);
+
+    // ZennのRSSを取得
     final response = await Dio().get('https://zenn.dev/topics/flutter/feed');
     final rssFeed = RssFeed.parse(response.data);
-    return _rssToFeed(rssFeed);
+    final feed = await _rssToFeed(rssFeed, lastUpdatedAt);
+
+    // 最終更新日時を保存
+    await _setLastUpdatedAt(lastUpdatedAtKey, feed.updatedAt);
+
+    return feed;
   }
 
   Future<Feed> fetchQiitaFeed() async {
+    const lastUpdatedAtKey = SharedPreferencesKeys.lastQiitaFeedUpdatedAt;
+    final lastUpdatedAt = _getLastUpdatedAt(lastUpdatedAtKey);
+
     final response = await Dio().get('https://qiita.com/tags/flutter/feed');
     final atomFeed = AtomFeed.parse(response.data);
-    return _atomToFeed(atomFeed);
+    final feed = await _atomToFeed(atomFeed, lastUpdatedAt);
+
+    await _setLastUpdatedAt(lastUpdatedAtKey, feed.updatedAt);
+
+    return feed;
   }
 
   Future<Feed> fetchMediumFeed() async {
+    const lastUpdatedAtKey = SharedPreferencesKeys.lastMediumFeedUpdatedAt;
+    final lastUpdatedAt = _getLastUpdatedAt(lastUpdatedAtKey);
+
     final response = await Dio().get('https://medium.com/feed/flutter-jp');
     final rssFeed = RssFeed.parse(response.data);
-    return _rssToFeed(rssFeed);
+    final feed = await _rssToFeed(rssFeed, lastUpdatedAt);
+
+    await _setLastUpdatedAt(lastUpdatedAtKey, feed.updatedAt);
+
+    return feed;
   }
 
   /// RSSFeedをFeedに変換する
-  Future<Feed> _rssToFeed(RssFeed rss) async {
+  Future<Feed> _rssToFeed(RssFeed rss, DateTime? lastUpdatedAt) async {
     final articleList = await Future.wait(
       (rss.items ?? []).map(
         (item) async {
           final url = item.link;
-          if (url == null) return FeedArticle.rss(item, null);
+          if (url == null) return FeedArticle.rss(item, null, lastUpdatedAt);
           final imageUrl = await _fetchImageUrl(
             url,
           );
-          return FeedArticle.rss(item, imageUrl);
+          return FeedArticle.rss(item, imageUrl, lastUpdatedAt);
         },
       ),
     );
@@ -55,16 +80,16 @@ class FeedRepository {
   }
 
   /// AtomFeedをFeedに変換する
-  Future<Feed> _atomToFeed(AtomFeed atom) async {
+  Future<Feed> _atomToFeed(AtomFeed atom, DateTime? lastUpdatedAt) async {
     final articleList = await Future.wait(
       (atom.items ?? []).map(
         (entry) async {
           final url = entry.links?.first.href;
-          if (url == null) return FeedArticle.atom(entry, null);
+          if (url == null) return FeedArticle.atom(entry, null, lastUpdatedAt);
           final imageUrl = await _fetchImageUrl(
             url,
           );
-          return FeedArticle.atom(entry, imageUrl);
+          return FeedArticle.atom(entry, imageUrl, lastUpdatedAt);
         },
       ),
     );
@@ -79,6 +104,24 @@ class FeedRepository {
   Future<String?> _fetchImageUrl(String articleUrl) async {
     final metadata = await MetadataFetch.extract(articleUrl);
     return metadata?.image;
+  }
+
+  DateTime? _getLastUpdatedAt(SharedPreferencesKeys key) {
+    final lastFetchTimeString =
+        _ref.read(sharedPreferencesProvider).getString(key.name);
+    if (lastFetchTimeString == null) return null;
+
+    return DateTime.tryParse(lastFetchTimeString);
+  }
+
+  Future<void> _setLastUpdatedAt(
+    SharedPreferencesKeys key,
+    DateTime updatedAt,
+  ) async {
+    await _ref.read(sharedPreferencesProvider).setString(
+          key.name,
+          updatedAt.toIso8601String(),
+        );
   }
 }
 
@@ -98,44 +141,52 @@ class FeedArticle {
   final String? url;
   final DateTime? publishedAt;
   final String? imageUrl;
+  final bool isNew;
   const FeedArticle._(
     this.title,
     this.url,
     this.publishedAt,
     this.imageUrl,
+    this.isNew,
   );
 
-  factory FeedArticle.rss(RssItem item, String? imageUrl) {
+  factory FeedArticle.rss(
+      RssItem item, String? imageUrl, DateTime? lastUpdatedAt) {
+    final publishedAt = item.pubDate;
     return FeedArticle._(
       item.title,
       item.link,
-      item.pubDate,
+      publishedAt,
       imageUrl,
+      _calcIsNew(publishedAt, lastUpdatedAt),
     );
   }
 
-  factory FeedArticle.atom(AtomItem item, String? imageUrl) {
+  factory FeedArticle.atom(
+      AtomItem item, String? imageUrl, DateTime? lastUpdatedAt) {
+    final publishedAt = DateTime.tryParse(item.published ?? '');
     return FeedArticle._(
       item.title,
       item.links?.firstOrNull?.href,
-      DateTime.tryParse(item.published ?? ''),
+      publishedAt,
       imageUrl,
+      _calcIsNew(publishedAt, lastUpdatedAt),
     );
   }
 
-  /// 経過時間
-  String get elapsedTime {
-    final now = DateTime.now();
-    final diff = now.difference(publishedAt ?? now);
-    if (diff.inDays > 0) {
-      return '${diff.inDays}日前';
-    } else if (diff.inHours > 0) {
-      return '${diff.inHours}時間前';
-    } else if (diff.inMinutes > 0) {
-      return '${diff.inMinutes}分前';
-    } else {
-      return 'たった今';
+  // Factoryからアクセスするためにstaticにしている
+  static bool _calcIsNew(DateTime? publishedAt, DateTime? lastUpdatedAt) {
+    // 初回は全て新しい記事として扱う
+    if (lastUpdatedAt == null) {
+      return true;
     }
+
+    // publishedAtがnullの場合は新しい記事として扱わない
+    if (publishedAt == null) {
+      return false;
+    }
+
+    return publishedAt.isAfter(lastUpdatedAt);
   }
 }
 

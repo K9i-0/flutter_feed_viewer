@@ -5,9 +5,11 @@ final sharedPreferencesProvider = Provider<SharedPreferences>(
   (ref) => throw UnimplementedError(),
 );
 
+/// キー被りを防ぐためのenum
+/// Keyとしてはenumのnameを使う
 enum SharedPreferencesKeys {
-  themeMode('themeMode');
-
-  final String value;
-  const SharedPreferencesKeys(this.value);
+  themeMode,
+  lastZennFeedUpdatedAt,
+  lastQiitaFeedUpdatedAt,
+  lastMediumFeedUpdatedAt,
 }
