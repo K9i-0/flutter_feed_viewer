@@ -12,6 +12,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
+/// フィードカテゴリーに応じたフィード
 final feedProviderFamily =
     FutureProvider.family.autoDispose<Feed, FeedCategory>(
   (ref, category) {
@@ -92,7 +93,7 @@ class ArticleItem extends HookConsumerWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Stack(
-          // シャアボタンのRippleがはみ出るようにする
+          // シェアボタンのRippleがはみ出るようにする
           clipBehavior: Clip.none,
           children: [
             Row(

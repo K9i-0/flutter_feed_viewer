@@ -1,5 +1,5 @@
 extension DateTimeX on DateTime {
-  /// 経過時間
+  /// X日前形式の経過時間を取得する
   String get elapsedTime {
     final now = DateTime.now();
     final diff = now.difference(this);

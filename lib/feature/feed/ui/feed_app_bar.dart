@@ -33,6 +33,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
+  // toolbarの高さ + tabの高さ
   @override
   Size get preferredSize => Size.fromHeight(
         kToolbarHeight +
