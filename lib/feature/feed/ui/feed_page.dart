@@ -121,12 +121,12 @@ class ArticleItem extends HookConsumerWidget {
                       const Gap(4),
                       Row(
                         children: [
-                          // TODO(K9i-0): 新着判定
                           // 新着表示
-                          const CommonLabel(
-                            label: '新着',
-                            tooltip: '前回アプリを開いてからの新着記事',
-                          ),
+                          if (article.isNew)
+                            const CommonLabel(
+                              label: '新着',
+                              tooltip: '前回アプリを開いてからの新着記事',
+                            ),
                           const Gap(4),
                           // n日前
                           Expanded(

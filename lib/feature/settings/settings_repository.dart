@@ -13,7 +13,7 @@ class SettingsRepository {
   ThemeMode get themeMode {
     final themeModeIndex = _ref
         .read(sharedPreferencesProvider)
-        .getInt(SharedPreferencesKeys.themeMode.value);
+        .getInt(SharedPreferencesKeys.themeMode.name);
 
     if (themeModeIndex == null) {
       return ThemeMode.system;
@@ -24,6 +24,6 @@ class SettingsRepository {
   Future<void> setThemeMode(ThemeMode themeMode) async {
     await _ref
         .read(sharedPreferencesProvider)
-        .setInt(SharedPreferencesKeys.themeMode.value, themeMode.index);
+        .setInt(SharedPreferencesKeys.themeMode.name, themeMode.index);
   }
 }
