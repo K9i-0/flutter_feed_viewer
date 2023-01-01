@@ -7,7 +7,7 @@ Riverpodを使ったFlutterアプリの例として参考にしてもらえる�
 コメントやプルリクエストなど、できるだけ日本語で書いています。
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/K9i-0/flutter_feed_viewer/main/flutter_feed_viewer.gif" alt="flutter_feed_viewer" />
+  <img src="https://raw.githubusercontent.com/K9i-0/flutter_feed_viewer//flutter_feed_viewer.gif" alt="flutter_feed_viewer" />
 </p>
 
 
