@@ -1,3 +1,4 @@
+/// フィードのカテゴリー
 enum FeedCategory {
   zenn('Zenn'),
   qiita('Qiita'),

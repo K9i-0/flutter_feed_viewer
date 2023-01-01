@@ -31,6 +31,7 @@ class CommonLabel extends StatelessWidget {
       ),
     );
 
+    // tooltipがある場合はラップする
     if (tooltip != null) {
       commonLabel = Tooltip(
         message: tooltip!,

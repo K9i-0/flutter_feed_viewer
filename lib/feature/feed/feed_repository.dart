@@ -190,21 +190,6 @@ class FeedArticle {
   }
 }
 
-const _months = {
-  'Jan': '01',
-  'Feb': '02',
-  'Mar': '03',
-  'Apr': '04',
-  'May': '05',
-  'Jun': '06',
-  'Jul': '07',
-  'Aug': '08',
-  'Sep': '09',
-  'Oct': '10',
-  'Nov': '11',
-  'Dec': '12',
-};
-
 /// RFC822の日付をパースする
 /// https://stackoverflow.com/questions/62289404/parse-rfc-822-date-and-make-timezones-work
 DateTime? _parseRfc822(String input) {
@@ -228,3 +213,18 @@ DateTime? _parseRfc822(String input) {
 
   return DateTime.tryParse(reformatted);
 }
+
+const _months = {
+  'Jan': '01',
+  'Feb': '02',
+  'Mar': '03',
+  'Apr': '04',
+  'May': '05',
+  'Jun': '06',
+  'Jul': '07',
+  'Aug': '08',
+  'Sep': '09',
+  'Oct': '10',
+  'Nov': '11',
+  'Dec': '12',
+};
