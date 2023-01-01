@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_feed_viewer/feature/feed/feed_category.dart';
+import 'package:flutter_feed_viewer/feature/feed/ui/feed_page.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class FeedBody extends HookConsumerWidget {
@@ -15,9 +16,7 @@ class FeedBody extends HookConsumerWidget {
       controller: tabController,
       children: FeedCategory.values
           .map(
-            (e) => Center(
-              child: Text(e.label),
-            ),
+            (category) => FeedPage(category: category),
           )
           .toList(),
     );
