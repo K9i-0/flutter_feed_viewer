@@ -6,3 +6,4 @@ targets:
         generate_for:
           include:
             - lib/**/*state.dart
+            - test/**/*.dart
