@@ -21,9 +21,11 @@ final dioProvider = Provider.autoDispose<Dio>(
   (ref) => Dio(),
 );
 
-final metadataProviderFamily =
-    Provider.family.autoDispose<Future<Metadata?>, String>(
-  (ref, url) => MetadataFetch.extract(url),
+/// 記事URLからOGP画像URLを取得する
+final ogpImageUrlProviderFamily =
+    FutureProvider.family.autoDispose<String?, String>(
+  (ref, articleUrl) =>
+      MetadataFetch.extract(articleUrl).then((value) => value?.image),
 );
 
 typedef Rfc822Parser = DateTime? Function(String rfc822String);
@@ -162,9 +164,8 @@ class FeedRepository {
           if (url == null) {
             return FeedArticle.rss(item, null, lastUpdatedAt, isNewChecker);
           }
-          final imageUrl = await _fetchImageUrl(
-            url,
-          );
+          final imageUrl =
+              await _ref.read(ogpImageUrlProviderFamily(url).future);
           return FeedArticle.rss(item, imageUrl, lastUpdatedAt, isNewChecker);
         },
       ),
@@ -187,9 +188,8 @@ class FeedRepository {
           if (url == null) {
             return FeedArticle.atom(entry, null, lastUpdatedAt, isNewChecker);
           }
-          final imageUrl = await _fetchImageUrl(
-            url,
-          );
+          final imageUrl =
+              await _ref.read(ogpImageUrlProviderFamily(url).future);
           return FeedArticle.atom(entry, imageUrl, lastUpdatedAt, isNewChecker);
         },
       ),
@@ -199,12 +199,6 @@ class FeedRepository {
       articleList: articleList,
       updatedAt: atom.updated ?? DateTime.now(),
     );
-  }
-
-  /// 記事URLからOGP画像を取得する
-  Future<String?> _fetchImageUrl(String articleUrl) async {
-    final metadata = await _ref.read(metadataProviderFamily(articleUrl));
-    return metadata?.image;
   }
 
   DateTime? _getLastUpdatedAt(SharedPreferencesKeys key) {

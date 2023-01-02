@@ -3,7 +3,6 @@ import 'package:flutter_feed_viewer/feature/feed/feed_repository.dart';
 import 'package:flutter_feed_viewer/local/shared_preferences.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:metadata_fetch/metadata_fetch.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,18 +19,6 @@ class MockResponse extends Mock implements Response {
     final mockResponse = MockResponse._();
     when(mockResponse.data).thenReturn(data);
     return mockResponse;
-  }
-}
-
-class MockMetadata extends Mock implements Metadata {
-  MockMetadata._();
-
-  factory MockMetadata({
-    required String imageUrl,
-  }) {
-    final mockMetadata = MockMetadata._();
-    when(mockMetadata.image).thenReturn(imageUrl);
-    return mockMetadata;
   }
 }
 
@@ -154,19 +141,11 @@ void main() {
             ],
           ),
         ),
-        metadataProviderFamily(testNewArticleUrl).overrideWithValue(
-          Future.value(
-            MockMetadata(
-              imageUrl: testNewArticleImageUrl,
-            ),
-          ),
+        ogpImageUrlProviderFamily(testNewArticleUrl).overrideWith(
+          (ref) => testNewArticleImageUrl,
         ),
-        metadataProviderFamily(testOldArticleUrl).overrideWithValue(
-          Future.value(
-            MockMetadata(
-              imageUrl: testOldArticleImageUrl,
-            ),
-          ),
+        ogpImageUrlProviderFamily(testOldArticleUrl).overrideWith(
+          (ref) => testOldArticleImageUrl,
         ),
         rfc822ParserProvider.overrideWithValue(
           (_) => testFeedUpdatedAt,
@@ -228,19 +207,11 @@ void main() {
             updatedAt: testFeedUpdatedAt,
           ),
         ),
-        metadataProviderFamily(testNewArticleUrl).overrideWithValue(
-          Future.value(
-            MockMetadata(
-              imageUrl: testNewArticleImageUrl,
-            ),
-          ),
+        ogpImageUrlProviderFamily(testNewArticleUrl).overrideWith(
+          (ref) => testNewArticleImageUrl,
         ),
-        metadataProviderFamily(testOldArticleUrl).overrideWithValue(
-          Future.value(
-            MockMetadata(
-              imageUrl: testOldArticleImageUrl,
-            ),
-          ),
+        ogpImageUrlProviderFamily(testOldArticleUrl).overrideWith(
+          (ref) => testOldArticleImageUrl,
         ),
       ],
     );
@@ -298,19 +269,11 @@ void main() {
             ],
           ),
         ),
-        metadataProviderFamily(testNewArticleUrl).overrideWithValue(
-          Future.value(
-            MockMetadata(
-              imageUrl: testNewArticleImageUrl,
-            ),
-          ),
+        ogpImageUrlProviderFamily(testNewArticleUrl).overrideWith(
+          (ref) => testNewArticleImageUrl,
         ),
-        metadataProviderFamily(testOldArticleUrl).overrideWithValue(
-          Future.value(
-            MockMetadata(
-              imageUrl: testOldArticleImageUrl,
-            ),
-          ),
+        ogpImageUrlProviderFamily(testOldArticleUrl).overrideWith(
+          (ref) => testOldArticleImageUrl,
         ),
         rfc822ParserProvider.overrideWithValue(
           (_) => testFeedUpdatedAt,
