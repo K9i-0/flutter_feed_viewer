@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_feed_viewer/local/shared_preferences.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:metadata_fetch/metadata_fetch.dart';
@@ -74,33 +75,6 @@ final rfc822ParserProvider = Provider<Rfc822Parser>(
   },
 );
 
-typedef IsNewChecker = bool Function({
-  required DateTime? publishedAt,
-  required DateTime? lastUpdatedAt,
-});
-
-/// 記事の新着判定
-final isNewCheckerProvider = Provider<IsNewChecker>(
-  (ref) {
-    return ({
-      required DateTime? publishedAt,
-      required DateTime? lastUpdatedAt,
-    }) {
-      // 初回なので、全て新しい記事として扱う
-      if (lastUpdatedAt == null) {
-        return true;
-      }
-
-      // publishedAtがnullの場合は新しい記事として扱わない
-      if (publishedAt == null) {
-        return false;
-      }
-
-      return publishedAt.isAfter(lastUpdatedAt);
-    };
-  },
-);
-
 /// データソースの隠蔽
 /// 抽象化済みFeedを返す
 class FeedRepository {
@@ -156,7 +130,7 @@ class FeedRepository {
 
   /// RSSFeedをFeedに変換する
   Future<Feed> _rssToFeed(RssFeed rss, DateTime? lastUpdatedAt) async {
-    final isNewChecker = _ref.read(isNewCheckerProvider);
+    final isNewChecker = checkIsNew;
     final articleList = await Future.wait(
       (rss.items ?? []).map(
         (item) async {
@@ -180,7 +154,7 @@ class FeedRepository {
 
   /// AtomFeedをFeedに変換する
   Future<Feed> _atomToFeed(AtomFeed atom, DateTime? lastUpdatedAt) async {
-    final isNewChecker = _ref.read(isNewCheckerProvider);
+    final isNewChecker = checkIsNew;
     final articleList = await Future.wait(
       (atom.items ?? []).map(
         (entry) async {
@@ -199,6 +173,25 @@ class FeedRepository {
       articleList: articleList,
       updatedAt: atom.updated ?? DateTime.now(),
     );
+  }
+
+  /// 記事の新着判定
+  @visibleForTesting
+  bool checkIsNew({
+    required DateTime? publishedAt,
+    required DateTime? lastUpdatedAt,
+  }) {
+    // 初回なので、全て新しい記事として扱う
+    if (lastUpdatedAt == null) {
+      return true;
+    }
+
+    // publishedAtがnullの場合は新しい記事として扱わない
+    if (publishedAt == null) {
+      return false;
+    }
+
+    return publishedAt.isAfter(lastUpdatedAt);
   }
 
   DateTime? _getLastUpdatedAt(SharedPreferencesKeys key) {
@@ -229,6 +222,11 @@ class Feed {
     required this.updatedAt,
   });
 }
+
+typedef IsNewChecker = bool Function({
+  required DateTime? publishedAt,
+  required DateTime? lastUpdatedAt,
+});
 
 /// 記事の抽象化
 class FeedArticle {

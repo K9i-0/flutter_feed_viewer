@@ -308,7 +308,7 @@ void main() {
 
   test('最終取得日時がない場合のテスト', () {
     final container = ProviderContainer();
-    final isNewChecker = container.read(isNewCheckerProvider);
+    final isNewChecker = container.read(feedRepositoryProvider).checkIsNew;
 
     expect(
       isNewChecker(
@@ -349,7 +349,7 @@ void main() {
 
   test('最終取得日時があるときのテスト', () {
     final container = ProviderContainer();
-    final isNewChecker = container.read(isNewCheckerProvider);
+    final isNewChecker = container.read(feedRepositoryProvider).checkIsNew;
     final lastUpdatedAt = DateTime(2021, 1, 1);
 
     expect(
