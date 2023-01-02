@@ -9,6 +9,96 @@ final feedRepositoryProvider = Provider.autoDispose<FeedRepository>(
   (ref) => FeedRepository(ref),
 );
 
+final atomFeedProviderFamily = Provider.family.autoDispose<AtomFeed, String>(
+  (ref, xmlString) => AtomFeed.parse(xmlString),
+);
+
+final rssFeedProviderFamily = Provider.family.autoDispose<RssFeed, String>(
+  (ref, xmlString) => RssFeed.parse(xmlString),
+);
+
+final dioProvider = Provider.autoDispose<Dio>(
+  (ref) => Dio(),
+);
+
+final metadataProviderFamily =
+    Provider.family.autoDispose<Future<Metadata?>, String>(
+  (ref, url) => MetadataFetch.extract(url),
+);
+
+typedef Rfc822Parser = DateTime? Function(String rfc822String);
+
+/// RFC822の日付をパースする
+/// https://stackoverflow.com/questions/62289404/parse-rfc-822-date-and-make-timezones-work
+final rfc822ParserProvider = Provider<Rfc822Parser>(
+  (ref) {
+    const months = {
+      'Jan': '01',
+      'Feb': '02',
+      'Mar': '03',
+      'Apr': '04',
+      'May': '05',
+      'Jun': '06',
+      'Jul': '07',
+      'Aug': '08',
+      'Sep': '09',
+      'Oct': '10',
+      'Nov': '11',
+      'Dec': '12',
+    };
+
+    return (String input) {
+      input = input.replaceFirst('GMT', '+0000');
+
+      final splits = input.split(' ');
+
+      final splitYear = splits[3];
+
+      final splitMonth = months[splits[2]];
+      if (splitMonth == null) return null;
+
+      var splitDay = splits[1];
+      if (splitDay.length == 1) {
+        splitDay = '0$splitDay';
+      }
+
+      final splitTime = splits[4], splitZone = splits[5];
+
+      var reformatted =
+          '$splitYear-$splitMonth-$splitDay $splitTime $splitZone';
+
+      return DateTime.tryParse(reformatted);
+    };
+  },
+);
+
+typedef IsNewChecker = bool Function({
+  required DateTime? publishedAt,
+  required DateTime? lastUpdatedAt,
+});
+
+/// 記事の新着判定
+final isNewCheckerProvider = Provider<IsNewChecker>(
+  (ref) {
+    return ({
+      required DateTime? publishedAt,
+      required DateTime? lastUpdatedAt,
+    }) {
+      // 初回なので、全て新しい記事として扱う
+      if (lastUpdatedAt == null) {
+        return true;
+      }
+
+      // publishedAtがnullの場合は新しい記事として扱わない
+      if (publishedAt == null) {
+        return false;
+      }
+
+      return publishedAt.isAfter(lastUpdatedAt);
+    };
+  },
+);
+
 /// データソースの隠蔽
 /// 抽象化済みFeedを返す
 class FeedRepository {
@@ -22,8 +112,10 @@ class FeedRepository {
     final lastUpdatedAt = _getLastUpdatedAt(lastUpdatedAtKey);
 
     // ZennのRSSを取得
-    final response = await Dio().get('https://zenn.dev/topics/flutter/feed');
-    final rssFeed = RssFeed.parse(response.data);
+    final response = await _ref
+        .read(dioProvider)
+        .get('https://zenn.dev/topics/flutter/feed');
+    final rssFeed = _ref.read(rssFeedProviderFamily(response.data));
     final feed = await _rssToFeed(rssFeed, lastUpdatedAt);
 
     // 最終更新日時を保存
@@ -36,8 +128,9 @@ class FeedRepository {
     const lastUpdatedAtKey = SharedPreferencesKeys.lastQiitaFeedUpdatedAt;
     final lastUpdatedAt = _getLastUpdatedAt(lastUpdatedAtKey);
 
-    final response = await Dio().get('https://qiita.com/tags/flutter/feed');
-    final atomFeed = AtomFeed.parse(response.data);
+    final response =
+        await _ref.read(dioProvider).get('https://qiita.com/tags/flutter/feed');
+    final atomFeed = _ref.read(atomFeedProviderFamily(response.data));
     final feed = await _atomToFeed(atomFeed, lastUpdatedAt);
 
     await _setLastUpdatedAt(lastUpdatedAtKey, feed.updatedAt);
@@ -49,8 +142,9 @@ class FeedRepository {
     const lastUpdatedAtKey = SharedPreferencesKeys.lastMediumFeedUpdatedAt;
     final lastUpdatedAt = _getLastUpdatedAt(lastUpdatedAtKey);
 
-    final response = await Dio().get('https://medium.com/feed/flutter-jp');
-    final rssFeed = RssFeed.parse(response.data);
+    final response =
+        await _ref.read(dioProvider).get('https://medium.com/feed/flutter-jp');
+    final rssFeed = _ref.read(rssFeedProviderFamily(response.data));
     final feed = await _rssToFeed(rssFeed, lastUpdatedAt);
 
     await _setLastUpdatedAt(lastUpdatedAtKey, feed.updatedAt);
@@ -60,36 +154,43 @@ class FeedRepository {
 
   /// RSSFeedをFeedに変換する
   Future<Feed> _rssToFeed(RssFeed rss, DateTime? lastUpdatedAt) async {
+    final isNewChecker = _ref.read(isNewCheckerProvider);
     final articleList = await Future.wait(
       (rss.items ?? []).map(
         (item) async {
           final url = item.link;
-          if (url == null) return FeedArticle.rss(item, null, lastUpdatedAt);
+          if (url == null) {
+            return FeedArticle.rss(item, null, lastUpdatedAt, isNewChecker);
+          }
           final imageUrl = await _fetchImageUrl(
             url,
           );
-          return FeedArticle.rss(item, imageUrl, lastUpdatedAt);
+          return FeedArticle.rss(item, imageUrl, lastUpdatedAt, isNewChecker);
         },
       ),
     );
+    final rfc822Parser = _ref.read(rfc822ParserProvider);
 
     return Feed(
       articleList: articleList,
-      updatedAt: _parseRfc822(rss.lastBuildDate ?? '') ?? DateTime.now(),
+      updatedAt: rfc822Parser(rss.lastBuildDate ?? '') ?? DateTime.now(),
     );
   }
 
   /// AtomFeedをFeedに変換する
   Future<Feed> _atomToFeed(AtomFeed atom, DateTime? lastUpdatedAt) async {
+    final isNewChecker = _ref.read(isNewCheckerProvider);
     final articleList = await Future.wait(
       (atom.items ?? []).map(
         (entry) async {
-          final url = entry.links?.first.href;
-          if (url == null) return FeedArticle.atom(entry, null, lastUpdatedAt);
+          final url = entry.links?.firstOrNull?.href;
+          if (url == null) {
+            return FeedArticle.atom(entry, null, lastUpdatedAt, isNewChecker);
+          }
           final imageUrl = await _fetchImageUrl(
             url,
           );
-          return FeedArticle.atom(entry, imageUrl, lastUpdatedAt);
+          return FeedArticle.atom(entry, imageUrl, lastUpdatedAt, isNewChecker);
         },
       ),
     );
@@ -102,7 +203,7 @@ class FeedRepository {
 
   /// 記事URLからOGP画像を取得する
   Future<String?> _fetchImageUrl(String articleUrl) async {
-    final metadata = await MetadataFetch.extract(articleUrl);
+    final metadata = await _ref.read(metadataProviderFamily(articleUrl));
     return metadata?.image;
   }
 
@@ -150,81 +251,27 @@ class FeedArticle {
     this.isNew,
   );
 
-  factory FeedArticle.rss(
-      RssItem item, String? imageUrl, DateTime? lastUpdatedAt) {
+  factory FeedArticle.rss(RssItem item, String? imageUrl,
+      DateTime? lastUpdatedAt, IsNewChecker checker) {
     final publishedAt = item.pubDate;
     return FeedArticle._(
       item.title,
       item.link,
       publishedAt,
       imageUrl,
-      _calcIsNew(publishedAt, lastUpdatedAt),
+      checker(publishedAt: publishedAt, lastUpdatedAt: lastUpdatedAt),
     );
   }
 
-  factory FeedArticle.atom(
-      AtomItem item, String? imageUrl, DateTime? lastUpdatedAt) {
+  factory FeedArticle.atom(AtomItem item, String? imageUrl,
+      DateTime? lastUpdatedAt, IsNewChecker checker) {
     final publishedAt = DateTime.tryParse(item.published ?? '');
     return FeedArticle._(
       item.title,
       item.links?.firstOrNull?.href,
       publishedAt,
       imageUrl,
-      _calcIsNew(publishedAt, lastUpdatedAt),
+      checker(publishedAt: publishedAt, lastUpdatedAt: lastUpdatedAt),
     );
   }
-
-  // Factoryからアクセスするためにstaticにしている
-  static bool _calcIsNew(DateTime? publishedAt, DateTime? lastUpdatedAt) {
-    // 初回は全て新しい記事として扱う
-    if (lastUpdatedAt == null) {
-      return true;
-    }
-
-    // publishedAtがnullの場合は新しい記事として扱わない
-    if (publishedAt == null) {
-      return false;
-    }
-
-    return publishedAt.isAfter(lastUpdatedAt);
-  }
 }
-
-/// RFC822の日付をパースする
-/// https://stackoverflow.com/questions/62289404/parse-rfc-822-date-and-make-timezones-work
-DateTime? _parseRfc822(String input) {
-  input = input.replaceFirst('GMT', '+0000');
-
-  final splits = input.split(' ');
-
-  final splitYear = splits[3];
-
-  final splitMonth = _months[splits[2]];
-  if (splitMonth == null) return null;
-
-  var splitDay = splits[1];
-  if (splitDay.length == 1) {
-    splitDay = '0$splitDay';
-  }
-
-  final splitTime = splits[4], splitZone = splits[5];
-
-  var reformatted = '$splitYear-$splitMonth-$splitDay $splitTime $splitZone';
-
-  return DateTime.tryParse(reformatted);
-}
-
-const _months = {
-  'Jan': '01',
-  'Feb': '02',
-  'Mar': '03',
-  'Apr': '04',
-  'May': '05',
-  'Jun': '06',
-  'Jul': '07',
-  'Aug': '08',
-  'Sep': '09',
-  'Oct': '10',
-  'Nov': '11',
-  'Dec': '12',
-};
