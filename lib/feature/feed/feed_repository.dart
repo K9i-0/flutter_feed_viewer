@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_feed_viewer/local/shared_preferences.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:metadata_fetch/metadata_fetch.dart';
@@ -21,9 +22,11 @@ final dioProvider = Provider.autoDispose<Dio>(
   (ref) => Dio(),
 );
 
-final metadataProviderFamily =
-    Provider.family.autoDispose<Future<Metadata?>, String>(
-  (ref, url) => MetadataFetch.extract(url),
+/// 記事URLからOGP画像URLを取得する
+final ogpImageUrlProviderFamily =
+    FutureProvider.family.autoDispose<String?, String>(
+  (ref, articleUrl) =>
+      MetadataFetch.extract(articleUrl).then((value) => value?.image),
 );
 
 typedef Rfc822Parser = DateTime? Function(String rfc822String);
@@ -68,33 +71,6 @@ final rfc822ParserProvider = Provider<Rfc822Parser>(
           '$splitYear-$splitMonth-$splitDay $splitTime $splitZone';
 
       return DateTime.tryParse(reformatted);
-    };
-  },
-);
-
-typedef IsNewChecker = bool Function({
-  required DateTime? publishedAt,
-  required DateTime? lastUpdatedAt,
-});
-
-/// 記事の新着判定
-final isNewCheckerProvider = Provider<IsNewChecker>(
-  (ref) {
-    return ({
-      required DateTime? publishedAt,
-      required DateTime? lastUpdatedAt,
-    }) {
-      // 初回なので、全て新しい記事として扱う
-      if (lastUpdatedAt == null) {
-        return true;
-      }
-
-      // publishedAtがnullの場合は新しい記事として扱わない
-      if (publishedAt == null) {
-        return false;
-      }
-
-      return publishedAt.isAfter(lastUpdatedAt);
     };
   },
 );
@@ -154,7 +130,7 @@ class FeedRepository {
 
   /// RSSFeedをFeedに変換する
   Future<Feed> _rssToFeed(RssFeed rss, DateTime? lastUpdatedAt) async {
-    final isNewChecker = _ref.read(isNewCheckerProvider);
+    final isNewChecker = checkIsNew;
     final articleList = await Future.wait(
       (rss.items ?? []).map(
         (item) async {
@@ -162,9 +138,8 @@ class FeedRepository {
           if (url == null) {
             return FeedArticle.rss(item, null, lastUpdatedAt, isNewChecker);
           }
-          final imageUrl = await _fetchImageUrl(
-            url,
-          );
+          final imageUrl =
+              await _ref.read(ogpImageUrlProviderFamily(url).future);
           return FeedArticle.rss(item, imageUrl, lastUpdatedAt, isNewChecker);
         },
       ),
@@ -179,7 +154,7 @@ class FeedRepository {
 
   /// AtomFeedをFeedに変換する
   Future<Feed> _atomToFeed(AtomFeed atom, DateTime? lastUpdatedAt) async {
-    final isNewChecker = _ref.read(isNewCheckerProvider);
+    final isNewChecker = checkIsNew;
     final articleList = await Future.wait(
       (atom.items ?? []).map(
         (entry) async {
@@ -187,9 +162,8 @@ class FeedRepository {
           if (url == null) {
             return FeedArticle.atom(entry, null, lastUpdatedAt, isNewChecker);
           }
-          final imageUrl = await _fetchImageUrl(
-            url,
-          );
+          final imageUrl =
+              await _ref.read(ogpImageUrlProviderFamily(url).future);
           return FeedArticle.atom(entry, imageUrl, lastUpdatedAt, isNewChecker);
         },
       ),
@@ -201,10 +175,23 @@ class FeedRepository {
     );
   }
 
-  /// 記事URLからOGP画像を取得する
-  Future<String?> _fetchImageUrl(String articleUrl) async {
-    final metadata = await _ref.read(metadataProviderFamily(articleUrl));
-    return metadata?.image;
+  /// 記事の新着判定
+  @visibleForTesting
+  bool checkIsNew({
+    required DateTime? publishedAt,
+    required DateTime? lastUpdatedAt,
+  }) {
+    // 初回なので、全て新しい記事として扱う
+    if (lastUpdatedAt == null) {
+      return true;
+    }
+
+    // publishedAtがnullの場合は新しい記事として扱わない
+    if (publishedAt == null) {
+      return false;
+    }
+
+    return publishedAt.isAfter(lastUpdatedAt);
   }
 
   DateTime? _getLastUpdatedAt(SharedPreferencesKeys key) {
@@ -235,6 +222,11 @@ class Feed {
     required this.updatedAt,
   });
 }
+
+typedef IsNewChecker = bool Function({
+  required DateTime? publishedAt,
+  required DateTime? lastUpdatedAt,
+});
 
 /// 記事の抽象化
 class FeedArticle {
