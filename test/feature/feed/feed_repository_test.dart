@@ -342,6 +342,89 @@ void main() {
       isNew: false,
     );
   });
+
+  test('最終取得日時がない場合のテスト', () {
+    final container = ProviderContainer();
+    final isNewChecker = container.read(isNewCheckerProvider);
+
+    expect(
+      isNewChecker(
+        publishedAt: testNewArticlePublishedAt,
+        lastUpdatedAt: null,
+      ),
+      true,
+    );
+    expect(
+      isNewChecker(
+        publishedAt: testOldArticlePublishedAt,
+        lastUpdatedAt: null,
+      ),
+      true,
+    );
+    expect(
+      isNewChecker(
+        publishedAt: DateTime(0),
+        lastUpdatedAt: null,
+      ),
+      true,
+    );
+    expect(
+      isNewChecker(
+        publishedAt: DateTime(10000),
+        lastUpdatedAt: null,
+      ),
+      true,
+    );
+    expect(
+      isNewChecker(
+        publishedAt: null,
+        lastUpdatedAt: null,
+      ),
+      true,
+    );
+  });
+
+  test('最終取得日時があるときのテスト', () {
+    final container = ProviderContainer();
+    final isNewChecker = container.read(isNewCheckerProvider);
+    final lastUpdatedAt = DateTime(2021, 1, 1);
+
+    expect(
+      isNewChecker(
+        publishedAt: testNewArticlePublishedAt,
+        lastUpdatedAt: lastUpdatedAt,
+      ),
+      true,
+    );
+    expect(
+      isNewChecker(
+        publishedAt: testOldArticlePublishedAt,
+        lastUpdatedAt: lastUpdatedAt,
+      ),
+      false,
+    );
+    expect(
+      isNewChecker(
+        publishedAt: DateTime(0),
+        lastUpdatedAt: lastUpdatedAt,
+      ),
+      false,
+    );
+    expect(
+      isNewChecker(
+        publishedAt: DateTime(10000),
+        lastUpdatedAt: lastUpdatedAt,
+      ),
+      true,
+    );
+    expect(
+      isNewChecker(
+        publishedAt: null,
+        lastUpdatedAt: lastUpdatedAt,
+      ),
+      false,
+    );
+  });
 }
 
 /// 生成コードを使ってるのでfactoryの代用

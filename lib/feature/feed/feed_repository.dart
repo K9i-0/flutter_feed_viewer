@@ -72,6 +72,33 @@ final rfc822ParserProvider = Provider<Rfc822Parser>(
   },
 );
 
+typedef IsNewChecker = bool Function({
+  required DateTime? publishedAt,
+  required DateTime? lastUpdatedAt,
+});
+
+/// 記事の新着判定
+final isNewCheckerProvider = Provider<IsNewChecker>(
+  (ref) {
+    return ({
+      required DateTime? publishedAt,
+      required DateTime? lastUpdatedAt,
+    }) {
+      // 初回なので、全て新しい記事として扱う
+      if (lastUpdatedAt == null) {
+        return true;
+      }
+
+      // publishedAtがnullの場合は新しい記事として扱わない
+      if (publishedAt == null) {
+        return false;
+      }
+
+      return publishedAt.isAfter(lastUpdatedAt);
+    };
+  },
+);
+
 /// データソースの隠蔽
 /// 抽象化済みFeedを返す
 class FeedRepository {
@@ -127,15 +154,18 @@ class FeedRepository {
 
   /// RSSFeedをFeedに変換する
   Future<Feed> _rssToFeed(RssFeed rss, DateTime? lastUpdatedAt) async {
+    final isNewChecker = _ref.read(isNewCheckerProvider);
     final articleList = await Future.wait(
       (rss.items ?? []).map(
         (item) async {
           final url = item.link;
-          if (url == null) return FeedArticle.rss(item, null, lastUpdatedAt);
+          if (url == null) {
+            return FeedArticle.rss(item, null, lastUpdatedAt, isNewChecker);
+          }
           final imageUrl = await _fetchImageUrl(
             url,
           );
-          return FeedArticle.rss(item, imageUrl, lastUpdatedAt);
+          return FeedArticle.rss(item, imageUrl, lastUpdatedAt, isNewChecker);
         },
       ),
     );
@@ -149,15 +179,18 @@ class FeedRepository {
 
   /// AtomFeedをFeedに変換する
   Future<Feed> _atomToFeed(AtomFeed atom, DateTime? lastUpdatedAt) async {
+    final isNewChecker = _ref.read(isNewCheckerProvider);
     final articleList = await Future.wait(
       (atom.items ?? []).map(
         (entry) async {
           final url = entry.links?.firstOrNull?.href;
-          if (url == null) return FeedArticle.atom(entry, null, lastUpdatedAt);
+          if (url == null) {
+            return FeedArticle.atom(entry, null, lastUpdatedAt, isNewChecker);
+          }
           final imageUrl = await _fetchImageUrl(
             url,
           );
-          return FeedArticle.atom(entry, imageUrl, lastUpdatedAt);
+          return FeedArticle.atom(entry, imageUrl, lastUpdatedAt, isNewChecker);
         },
       ),
     );
@@ -218,42 +251,27 @@ class FeedArticle {
     this.isNew,
   );
 
-  factory FeedArticle.rss(
-      RssItem item, String? imageUrl, DateTime? lastUpdatedAt) {
+  factory FeedArticle.rss(RssItem item, String? imageUrl,
+      DateTime? lastUpdatedAt, IsNewChecker checker) {
     final publishedAt = item.pubDate;
     return FeedArticle._(
       item.title,
       item.link,
       publishedAt,
       imageUrl,
-      _calcIsNew(publishedAt, lastUpdatedAt),
+      checker(publishedAt: publishedAt, lastUpdatedAt: lastUpdatedAt),
     );
   }
 
-  factory FeedArticle.atom(
-      AtomItem item, String? imageUrl, DateTime? lastUpdatedAt) {
+  factory FeedArticle.atom(AtomItem item, String? imageUrl,
+      DateTime? lastUpdatedAt, IsNewChecker checker) {
     final publishedAt = DateTime.tryParse(item.published ?? '');
     return FeedArticle._(
       item.title,
       item.links?.firstOrNull?.href,
       publishedAt,
       imageUrl,
-      _calcIsNew(publishedAt, lastUpdatedAt),
+      checker(publishedAt: publishedAt, lastUpdatedAt: lastUpdatedAt),
     );
-  }
-
-  // Factoryからアクセスするためにstaticにしている
-  static bool _calcIsNew(DateTime? publishedAt, DateTime? lastUpdatedAt) {
-    // 初回は全て新しい記事として扱う
-    if (lastUpdatedAt == null) {
-      return true;
-    }
-
-    // publishedAtがnullの場合は新しい記事として扱わない
-    if (publishedAt == null) {
-      return false;
-    }
-
-    return publishedAt.isAfter(lastUpdatedAt);
   }
 }
