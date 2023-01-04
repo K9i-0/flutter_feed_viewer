@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_feed_viewer/local/shared_preferences.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:metadata_fetch/metadata_fetch.dart';
+import 'package:webfeed/util/datetime.dart';
 import 'package:webfeed/webfeed.dart';
 
 final feedRepositoryProvider = Provider.autoDispose<FeedRepository>(
@@ -31,48 +32,10 @@ final ogpImageUrlProviderFamily =
 
 typedef Rfc822Parser = DateTime? Function(String rfc822String);
 
-/// RFC822の日付をパースする
-/// https://stackoverflow.com/questions/62289404/parse-rfc-822-date-and-make-timezones-work
+/// webfeedパッケージのメソッドを使ってRFC822の日付をパースする
+/// テスト時のデータを用意するのが面倒なのでDIする
 final rfc822ParserProvider = Provider<Rfc822Parser>(
-  (ref) {
-    const months = {
-      'Jan': '01',
-      'Feb': '02',
-      'Mar': '03',
-      'Apr': '04',
-      'May': '05',
-      'Jun': '06',
-      'Jul': '07',
-      'Aug': '08',
-      'Sep': '09',
-      'Oct': '10',
-      'Nov': '11',
-      'Dec': '12',
-    };
-
-    return (String input) {
-      input = input.replaceFirst('GMT', '+0000');
-
-      final splits = input.split(' ');
-
-      final splitYear = splits[3];
-
-      final splitMonth = months[splits[2]];
-      if (splitMonth == null) return null;
-
-      var splitDay = splits[1];
-      if (splitDay.length == 1) {
-        splitDay = '0$splitDay';
-      }
-
-      final splitTime = splits[4], splitZone = splits[5];
-
-      var reformatted =
-          '$splitYear-$splitMonth-$splitDay $splitTime $splitZone';
-
-      return DateTime.tryParse(reformatted);
-    };
-  },
+  (ref) => parseDateTime,
 );
 
 /// データソースの隠蔽
