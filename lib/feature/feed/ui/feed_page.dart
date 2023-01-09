@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_feed_viewer/common_widget/common_label.dart';
 import 'package:flutter_feed_viewer/common_widget/error_text_with_retry_button.dart';
@@ -6,7 +7,6 @@ import 'package:flutter_feed_viewer/feature/feed/feed_category.dart';
 import 'package:flutter_feed_viewer/feature/feed/feed_repository.dart';
 import 'package:flutter_feed_viewer/util/build_context_extension.dart';
 import 'package:flutter_feed_viewer/util/date_time_extension.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
@@ -15,15 +15,30 @@ import 'package:url_launcher/url_launcher_string.dart';
 /// フィードカテゴリーに応じたフィード
 final feedProviderFamily =
     FutureProvider.family.autoDispose<Feed, FeedCategory>(
-  (ref, category) {
+  (ref, category) async {
+    final cancelToken = CancelToken();
+    ref.onDispose(() => cancelToken.cancel());
+
+    final Feed feed;
     switch (category) {
       case FeedCategory.zenn:
-        return ref.watch(feedRepositoryProvider).fetchZennFeed();
+        feed = await ref.watch(feedRepositoryProvider).fetchZennFeed(
+              cancelToken: cancelToken,
+            );
+        break;
       case FeedCategory.qiita:
-        return ref.watch(feedRepositoryProvider).fetchQiitaFeed();
+        feed = await ref.watch(feedRepositoryProvider).fetchQiitaFeed(
+              cancelToken: cancelToken,
+            );
+        break;
       case FeedCategory.medium:
-        return ref.watch(feedRepositoryProvider).fetchMediumFeed();
+        feed = await ref.watch(feedRepositoryProvider).fetchMediumFeed(
+              cancelToken: cancelToken,
+            );
+        break;
     }
+    ref.keepAlive();
+    return feed;
   },
 );
 
@@ -36,9 +51,6 @@ class FeedPage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // タブ切り替え時の状態保持
-    useAutomaticKeepAlive();
-
     return ref.watch(feedProviderFamily(category)).when(
           data: (data) {
             final articleList = data.articleList;

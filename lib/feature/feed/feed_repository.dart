@@ -45,15 +45,18 @@ class FeedRepository {
   final Ref _ref;
   const FeedRepository(this._ref);
 
-  Future<Feed> fetchZennFeed() async {
+  Future<Feed> fetchZennFeed({
+    CancelToken? cancelToken,
+  }) async {
     // 前回取得時の最終更新日時を取得
     const lastUpdatedAtKey = SharedPreferencesKeys.lastZennFeedUpdatedAt;
     final lastUpdatedAt = _getLastUpdatedAt(lastUpdatedAtKey);
 
     // ZennのRSSを取得
-    final response = await _ref
-        .read(dioProvider)
-        .get('https://zenn.dev/topics/flutter/feed');
+    final response = await _ref.read(dioProvider).get(
+          'https://zenn.dev/topics/flutter/feed',
+          cancelToken: cancelToken,
+        );
     final rssFeed = _ref.read(rssFeedProviderFamily(response.data));
     final feed = await _rssToFeed(rssFeed, lastUpdatedAt);
 
@@ -63,12 +66,16 @@ class FeedRepository {
     return feed;
   }
 
-  Future<Feed> fetchQiitaFeed() async {
+  Future<Feed> fetchQiitaFeed({
+    CancelToken? cancelToken,
+  }) async {
     const lastUpdatedAtKey = SharedPreferencesKeys.lastQiitaFeedUpdatedAt;
     final lastUpdatedAt = _getLastUpdatedAt(lastUpdatedAtKey);
 
-    final response =
-        await _ref.read(dioProvider).get('https://qiita.com/tags/flutter/feed');
+    final response = await _ref.read(dioProvider).get(
+          'https://qiita.com/tags/flutter/feed',
+          cancelToken: cancelToken,
+        );
     final atomFeed = _ref.read(atomFeedProviderFamily(response.data));
     final feed = await _atomToFeed(atomFeed, lastUpdatedAt);
 
@@ -77,12 +84,16 @@ class FeedRepository {
     return feed;
   }
 
-  Future<Feed> fetchMediumFeed() async {
+  Future<Feed> fetchMediumFeed({
+    CancelToken? cancelToken,
+  }) async {
     const lastUpdatedAtKey = SharedPreferencesKeys.lastMediumFeedUpdatedAt;
     final lastUpdatedAt = _getLastUpdatedAt(lastUpdatedAtKey);
 
-    final response =
-        await _ref.read(dioProvider).get('https://medium.com/feed/flutter-jp');
+    final response = await _ref.read(dioProvider).get(
+          'https://medium.com/feed/flutter-jp',
+          cancelToken: cancelToken,
+        );
     final rssFeed = _ref.read(rssFeedProviderFamily(response.data));
     final feed = await _rssToFeed(rssFeed, lastUpdatedAt);
 
