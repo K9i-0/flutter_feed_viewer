@@ -44,12 +44,13 @@ class MyApp extends HookConsumerWidget {
       locale: DevicePreview.locale(context),
       builder: DevicePreview.appBuilder,
       theme: ThemeData(
-        // TODO(K9i-0): TabBarのM3対応がstableに入ったらuseMaterial3: trueに変える
-        primarySwatch: Colors.blue,
+        useMaterial3: true,
+        colorSchemeSeed: const Color(0xFF0553B1),
       ),
       darkTheme: ThemeData(
         brightness: Brightness.dark,
-        primarySwatch: Colors.blue,
+        useMaterial3: true,
+        colorSchemeSeed: const Color(0xFF0553B1),
       ),
       themeMode: ref.watch(settingsProvider.select((value) => value.themeMode)),
       home: const FeedScreen(),
