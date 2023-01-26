@@ -8,7 +8,7 @@ jobs:
   flutter-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v3
       - name: 'Read flutter version from .tool-versions'
         id: flutter_info
         run: |
